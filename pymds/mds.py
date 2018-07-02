@@ -108,8 +108,6 @@ class DistanceMatrix(object):
     def optimise(self, start=None, n=2):
         """Run multidimensional scaling on this distance matrix.
 
-        This is the function optimised by :obj:`scipy.optimize.minimize`.
-
         Args:
             start (None or array-like): Starting coordinates. If None, random
                 starting coordinates are used. If array-like must have shape
