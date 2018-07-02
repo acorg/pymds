@@ -73,7 +73,7 @@ class DistanceMatrix(object):
 
         K[np.isnan(K)] = 0
 
-        g = np.empty((self.m, self.n))
+        g = np.empty_like(coords)
         for n in range(self.n):
             for i in range(self.m):
                 # Vectorised version of (~70 times faster)
@@ -100,27 +100,47 @@ class DistanceMatrix(object):
         """
         coords = x.reshape((self.m, self.n))
         d = squareform(pdist(coords))
-        diff = self.D.values - d
+        diff = self.D - d
         error = self._error(diff)
         gradient = self._gradient(diff, d, coords)
         return error, gradient.ravel()
 
-    def optimise(self, m=2, start=None):
+    def optimise(self, start=None, n=2):
         """Run multidimensional scaling on this distance matrix.
 
         This is the function optimised by :obj:`scipy.optimize.minimize`.
 
         Args:
-            m (int): Number of dimensions to embed samples in.
             start (None or array-like): Starting coordinates. If None, random
                 starting coordinates are used. If array-like must have shape
                 [m * n, ].
+            n (int): Number of dimensions to embed samples in.
+
+        Examples:
+
+            .. doctest::
+
+               >>> import pandas as pd
+               >>> from pymds.mds import DistanceMatrix
+               >>> dist = pd.DataFrame({
+               ...    'a': [0.0, 1.0, 2.0],
+               ...    'b': [1.0, 0.0, 3 ** 0.5],
+               ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
+               >>> dm = DistanceMatrix(dist)
+               >>> proj = dm.optimise(n=2)
+               >>> proj.coords.shape
+               (3, 2)
+               >>> type(proj)
+               pymds.mds.Projection
+
 
         Returns:
             (Projection) The multidimensional scaling result.
         """
+        self.n = n
+
         if start is None:
-            start = np.random.rand(m * self.n) * 10
+            start = np.random.rand(self.m * self.n) * 10
 
         optim = minimize(
             fun=self._error_and_gradient,
@@ -128,9 +148,11 @@ class DistanceMatrix(object):
             jac=True,
             method='L-BFGS-B')
 
-        return Projection(optim, m=self.n, n=m, index=self.D.index)
+        index = self.D.index if hasattr(self.D, "index") else None
 
-    def optimise_batch(self, batchsize=10, returns='best'):
+        return Projection(optim, n=self.n, m=self.m, index=index)
+
+    def optimise_batch(self, batchsize=10, returns='best', paralell=True):
         """
         Run multiple optimisations using different starting configurations.
 
@@ -140,6 +162,24 @@ class DistanceMatrix(object):
             returns (str): If 'all', return results of all optimisations. These
                 are ordered by stress, ascending. If 'best' return only one
                 Projection with the lowest stress.
+            parallel (bool): Run optimisations in parallel or not.
+
+        Examples:
+
+            .. doctest::
+
+               >>> import pandas as pd
+               >>> from pymds.mds import DistanceMatrix
+               >>> dist = pd.DataFrame({
+               ...    'a': [0.0, 1.0, 2.0],
+               ...    'b': [1.0, 0.0, 3 ** 0.5],
+               ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
+               >>> dm = DistanceMatrix(dist)
+               >>> batch = dm.optimise_batch(batchsize=3, returns='all')
+               >>> len(batch)
+               3
+               >>> type(batch[0])
+               pymds.mds.Projection
 
         Returns:
             (list) of length batchsize. Contains instances of (Projection).
@@ -152,11 +192,13 @@ class DistanceMatrix(object):
         if returns not in ('best', 'all'):
             raise ValueError('returns must be either "best" or "all"')
 
-        starts = [np.random.rand(self.m * self.n) * 10
-                  for i in range(batchsize)]
+        starts = [np.random.rand(self.m * 2) * 10 for i in range(batchsize)]
 
-        with Pool() as p:
-            results = p.map(self.optimise, starts)
+        if paralell:
+            with Pool() as p:
+                results = p.map(self.optimise, starts)
+        else:
+            results = map(self.optimise, starts)
 
         results = sorted(results, key=lambda x: x.stress)
 
@@ -171,8 +213,8 @@ class Projection(object):
 
     Args:
         OptimizeResult (): Object returned by `scipy.optimize.minimize`.
-        m (int): Number of dimensions.
-        n (int): Number of samples.
+        n (int): Number of dimensions.
+        m (int): Number of samples.
         index (list-like): Names of samples. (Optional).
 
     Attributes:
@@ -180,9 +222,9 @@ class Projection(object):
         stress (float): Residual error of multidimensional scaling.
     """
 
-    def __init__(self, OptimizeResult, m, n, index=None):
+    def __init__(self, OptimizeResult, n, m, index=None):
         self.coords = pd.DataFrame(
-            OptimizeResult.x.reshape((n, m)), index=index)
+            OptimizeResult.x.reshape((m, n)), index=index)
         self.stress = OptimizeResult.fun
 
     def plot(self, **kwargs):
@@ -191,8 +233,12 @@ class Projection(object):
         Removes all axis and tick labels, and sets the grid spacing at 1 unit.
         One way to display the grid, using seaborn, is:
 
-        >>> import seaborn as sns
-        >>> sns.set_style('whitegrid')
+        Examples:
+
+            .. doctest::
+
+               >>> import seaborn as sns
+               >>> sns.set_style('whitegrid')
 
         Args:
             kwargs (dict): Passed to `pd.DataFrame.plot.scatter`.

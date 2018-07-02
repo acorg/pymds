@@ -3,8 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pymds
-=====
+#############
+:code:`pymds`
+#############
+
+Metric multidimensional scaling in python
 
 .. toctree::
    :maxdepth: 2
@@ -19,12 +22,6 @@ Install
 Use `pip`_::
 
     pip install pymds
-
-*******
-Example
-*******
-
-
 
 ******************
 Indices and tables

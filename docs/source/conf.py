@@ -45,7 +45,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.doctest',
     'sphinx.ext.napoleon',
-    'sphinx.ext.todo'
 ]
 todo_incude_todos = True
 napoleon_google_docstring = True
