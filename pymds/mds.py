@@ -32,7 +32,7 @@ class DistanceMatrix(object):
         else:
             if path_or_array_like.ndim != 2:
                 raise ValueError('Data not 2 dimensional')
-            if path_or_array_like.shape[1] - path_or_array_like.shape[0] != 0:
+            if path_or_array_like.shape[1] != path_or_array_like.shape[0]:
                 raise ValueError('Data must be square')
 
             if type(path_or_array_like) is pd.DataFrame:
@@ -137,8 +137,7 @@ class DistanceMatrix(object):
         """
         self.n = n
 
-        if start is None:
-            start = np.random.rand(self.m * self.n) * 10
+        start = start or np.random.rand(self.m * self.n) * 10
 
         optim = minimize(
             fun=self._error_and_gradient,
@@ -200,10 +199,7 @@ class DistanceMatrix(object):
 
         results = sorted(results, key=lambda x: x.stress)
 
-        if returns == 'all':
-            return results
-        else:
-            return results[0]
+        return results if returns == 'all' else results[0]
 
 
 class Projection(object):
