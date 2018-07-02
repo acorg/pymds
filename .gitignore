@@ -2,3 +2,5 @@
 */.DS_Store
 docs/build
 pymds.egg-info
+build
+dist
