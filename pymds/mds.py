@@ -1,0 +1,212 @@
+# -*- coding: utf-8 -*-
+import numpy as np
+import pandas as pd
+
+from pathos.multiprocessing import ProcessingPool as Pool
+
+from scipy.optimize import minimize
+from scipy.spatial.distance import pdist, squareform
+
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
+
+
+class DistanceMatrix(object):
+    """A distance matrix.
+
+    Args:
+        path_or_array_like (str or array-like): If str, path to csv
+            containing distance matrix. If array-like, the distance matrix.
+            Must be square.
+        na_values (str): How nan is represented in csv file.
+
+    Notes:
+        Negative distances are converted to 0.
+    """
+
+    def __init__(self, path_or_array_like, na_values='*'):
+        if type(path_or_array_like) is str:
+            self.D = pd.read_csv(
+                path_or_array_like, index_col=0, na_values=na_values)
+
+        else:
+            if path_or_array_like.ndim != 2:
+                raise ValueError('Data not 2 dimensional')
+            if path_or_array_like.shape[1] - path_or_array_like.shape[0] != 0:
+                raise ValueError('Data must be square')
+
+            if type(path_or_array_like) is pd.DataFrame:
+                self.D = path_or_array_like.values
+            else:
+                self.D = path_or_array_like
+
+        self.D[self.D < 0] = 0
+        self.m = self.D.shape[0]
+
+    def _error(self, diff):
+        """Sum of the squared difference.
+
+        Args:
+            diff (array-like): [m, m] matrix.
+
+        Returns:
+            (float)
+        """
+        return np.nansum(np.power(diff, 2)) / 2
+
+    def _gradient(self, diff, d, coords):
+        """Compute the gradient.
+
+        Args:
+            diff (array-like): [m, m] matrix. D - d
+            d (array-like): [m, m] matrix.
+            coords (array-like): [m, n] matrix.
+
+        Returns:
+            (np.array) [m, n]
+        """
+        denom = np.copy(d)
+        denom[denom == 0] = 1e-5
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            K = -2 * diff / denom
+
+        K[np.isnan(K)] = 0
+
+        g = np.empty((self.m, self.n))
+        for n in range(self.n):
+            for i in range(self.m):
+                # Vectorised version of (~70 times faster)
+                # for j in range(self.m):
+                #     delta_g = ((coords[i, n] - coords[j, n]) * K[i, j]).sum()
+                #     g[i, n] += delta_g
+                g[i, n] = ((coords[i, n] - coords[:, n]) * K[i, :]).sum()
+
+        return g
+
+    def _error_and_gradient(self, x):
+        """Compute the error and the gradient.
+
+        This is the function optimised by :obj:`scipy.optimize.minimize`.
+
+        Args:
+            x (array-like): [m * n, ] matrix.
+
+        Returns:
+            (tuple) containing
+
+                - (float)
+                - (np.array)
+        """
+        coords = x.reshape((self.m, self.n))
+        d = squareform(pdist(coords))
+        diff = self.D.values - d
+        error = self._error(diff)
+        gradient = self._gradient(diff, d, coords)
+        return error, gradient.ravel()
+
+    def optimise(self, m=2, start=None):
+        """Run multidimensional scaling on this distance matrix.
+
+        This is the function optimised by :obj:`scipy.optimize.minimize`.
+
+        Args:
+            m (int): Number of dimensions to embed samples in.
+            start (None or array-like): Starting coordinates. If None, random
+                starting coordinates are used. If array-like must have shape
+                [m * n, ].
+
+        Returns:
+            (Projection) The multidimensional scaling result.
+        """
+        if start is None:
+            start = np.random.rand(m * self.n) * 10
+
+        optim = minimize(
+            fun=self._error_and_gradient,
+            x0=start,
+            jac=True,
+            method='L-BFGS-B')
+
+        return Projection(optim, m=self.n, n=m, index=self.D.index)
+
+    def optimise_batch(self, batchsize=10, returns='best'):
+        """
+        Run multiple optimisations using different starting configurations.
+
+        Args:
+            m (int): Number of dimensions to embed samples in.
+            batchsize (int): Number of optimisations to run.
+            returns (str): If 'all', return results of all optimisations. These
+                are ordered by stress, ascending. If 'best' return only one
+                Projection with the lowest stress.
+
+        Returns:
+            (list) of length batchsize. Contains instances of (Projection).
+                Sorted by stress, ascending.
+
+            or
+
+            (Projection) with the lowest stress.
+        """
+        if returns not in ('best', 'all'):
+            raise ValueError('returns must be either "best" or "all"')
+
+        starts = [np.random.rand(self.m * self.n) * 10
+                  for i in range(batchsize)]
+
+        with Pool() as p:
+            results = p.map(self.optimise, starts)
+
+        results = sorted(results, key=lambda x: x.stress)
+
+        if returns == 'all':
+            return results
+        else:
+            return results[0]
+
+
+class Projection(object):
+    """Samples embeded in m-dimensional space.
+
+    Args:
+        OptimizeResult (): Object returned by `scipy.optimize.minimize`.
+        m (int): Number of dimensions.
+        n (int): Number of samples.
+        index (list-like): Names of samples. (Optional).
+
+    Attributes:
+        coords (pd.DataFrame): Coordinates of the projection.
+        stress (float): Residual error of multidimensional scaling.
+    """
+
+    def __init__(self, OptimizeResult, m, n, index=None):
+        self.coords = pd.DataFrame(
+            OptimizeResult.x.reshape((n, m)), index=index)
+        self.stress = OptimizeResult.fun
+
+    def plot(self, **kwargs):
+        """Plots the coordinates of the first two dimensions of the projection.
+
+        Removes all axis and tick labels, and sets the grid spacing at 1 unit.
+        One way to display the grid, using seaborn, is:
+
+        >>> import seaborn as sns
+        >>> sns.set_style('whitegrid')
+
+        Args:
+            kwargs (dict): Passed to `pd.DataFrame.plot.scatter`.
+
+        Returns:
+            (matplotlib.axes.Subplot)
+        """
+        self.coords.plot.scatter(x=0, y=1, **kwargs)
+        ax = plt.gca()
+        ax.get_xaxis().set_major_locator(MultipleLocator(base=1.0))
+        ax.get_yaxis().set_major_locator(MultipleLocator(base=1.0))
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+        ax.set_aspect(1)
+        return ax
