@@ -151,7 +151,7 @@ class DistanceMatrix(object):
 
     def optimise_batch(self, batchsize=10, returns='best', paralell=True):
         """
-        Run multiple optimisations using different starting configurations.
+        Run multiple optimisations using different starting coordinates.
 
         Args:
             m (int): Number of dimensions to embed samples in.
@@ -206,7 +206,8 @@ class Projection(object):
     """Samples embeded in m-dimensional space.
 
     Args:
-        OptimizeResult (): Object returned by `scipy.optimize.minimize`.
+        OptimizeResult (scipy.optimize.OptimizeResult): Object returned by
+            `scipy.optimize.minimize`.
         n (int): Number of dimensions.
         m (int): Number of samples.
         index (list-like): Names of samples. (Optional).
@@ -231,8 +232,18 @@ class Projection(object):
 
             .. doctest::
 
+               >>> import pandas as pd
+               >>> # Seaborn used for styles
                >>> import seaborn as sns
                >>> sns.set_style('whitegrid')
+               >>> from pymds.mds import DistanceMatrix
+               >>> dist = pd.DataFrame({
+               ...    'a': [0.0, 1.0, 2.0],
+               ...    'b': [1.0, 0.0, 3 ** 0.5],
+               ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
+               >>> dm = DistanceMatrix(dist)
+               >>> proj = dm.optimise()
+               >>> proj.plot()
 
         Args:
             kwargs (dict): Passed to `pd.DataFrame.plot.scatter`.

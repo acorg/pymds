@@ -1,10 +1,7 @@
 MDS
 ***
 
-Distance Matrix
-===============
-
-**Parameter and variable names**
+**Parameters and variables**
 
 `m`: Number of samples. This is the number of rows and columns in `D` which must match.
 
@@ -22,6 +19,8 @@ Distance Matrix
 
 `diff`: `D` `-` `d`.
 
+Distance Matrix
+===============
 
 .. autoclass:: pymds.DistanceMatrix
    :members:
