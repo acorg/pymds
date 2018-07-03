@@ -203,7 +203,7 @@ class DistanceMatrix(object):
 
 
 class Projection(object):
-    """Samples embeded in m-dimensional space.
+    """Samples embeded in n-dimensional space.
 
     Args:
         OptimizeResult (scipy.optimize.OptimizeResult): Object returned by
