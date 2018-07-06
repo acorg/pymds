@@ -26,8 +26,10 @@ class DistanceMatrix(object):
 
     def __init__(self, path_or_array_like, na_values='*'):
         if type(path_or_array_like) is str:
-            self.D = pd.read_csv(
+            df = pd.read_csv(
                 path_or_array_like, index_col=0, na_values=na_values)
+            self.D = df.values
+            self.index = df.index
 
         else:
             if path_or_array_like.ndim != 2:
@@ -37,6 +39,7 @@ class DistanceMatrix(object):
 
             if type(path_or_array_like) is pd.DataFrame:
                 self.D = path_or_array_like.values
+                self.index = path_or_array_like.index
             else:
                 self.D = path_or_array_like
 
@@ -145,7 +148,7 @@ class DistanceMatrix(object):
             jac=True,
             method='L-BFGS-B')
 
-        index = self.D.index if hasattr(self.D, "index") else None
+        index = self.index if hasattr(self, "index") else None
 
         return Projection(optim, n=self.n, m=self.m, index=index)
 
