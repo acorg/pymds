@@ -47,13 +47,17 @@ class DistanceMatrix(object):
         self.m = self.D.shape[0]
 
     def _error(self, diff):
-        """Sum of the squared difference.
+        """Half the sum of the squared difference.
 
         Args:
             diff (array-like): [m, m] matrix.
 
         Returns:
             (float)
+
+        Notes:
+            The return value is divided by two because distances between each
+            pair of samples are represented twice in a full [m, m] matrix.
         """
         return np.nansum(np.power(diff, 2)) / 2
 
