@@ -95,7 +95,7 @@ class DistanceMatrix(object):
     def _error_and_gradient(self, x):
         """Compute the error and the gradient.
 
-        This is the function optimised by :obj:`scipy.optimize.minimize`.
+        This is the function optimized by :obj:`scipy.optimize.minimize`.
 
         Args:
             x (array-like): [m * n, ] matrix.
@@ -113,7 +113,7 @@ class DistanceMatrix(object):
         gradient = self._gradient(diff, d, coords)
         return error, gradient.ravel()
 
-    def optimise(self, start=None, n=2):
+    def optimize(self, start=None, n=2):
         """Run multidimensional scaling on this distance matrix.
 
         Args:
@@ -133,11 +133,11 @@ class DistanceMatrix(object):
                ...    'b': [1.0, 0.0, 3 ** 0.5],
                ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
                >>> dm = DistanceMatrix(dist)
-               >>> proj = dm.optimise(n=2)
-               >>> proj.coords.shape
+               >>> pro = dm.optimize(n=2)
+               >>> pro.coords.shape
                (3, 2)
                >>> type(proj)
-               pymds.mds.Projection
+               <class 'pymds.mds.Projection'>
 
 
         Returns:
@@ -145,7 +145,8 @@ class DistanceMatrix(object):
         """
         self.n = n
 
-        start = start or np.random.rand(self.m * self.n) * 10
+        if start is None:
+            start = np.random.rand(self.m * self.n) * 10
 
         optim = minimize(
             fun=self._error_and_gradient,
@@ -158,7 +159,7 @@ class DistanceMatrix(object):
         return Projection.from_optimize_result(
             OptimizeResult=optim, n=self.n, m=self.m, index=index)
 
-    def optimise_batch(self, batchsize=10, returns='best', paralell=True):
+    def optimize_batch(self, batchsize=10, returns='best', paralell=True):
         """
         Run multiple optimisations using different starting coordinates.
 
@@ -181,11 +182,11 @@ class DistanceMatrix(object):
                ...    'b': [1.0, 0.0, 3 ** 0.5],
                ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
                >>> dm = DistanceMatrix(dist)
-               >>> batch = dm.optimise_batch(batchsize=3, returns='all')
+               >>> batch = dm.optimize_batch(batchsize=3, returns='all')
                >>> len(batch)
                3
                >>> type(batch[0])
-               pymds.mds.Projection
+               <class 'pymds.mds.Projection'>
 
         Returns:
             (list) of length batchsize. Contains instances of (Projection).
@@ -202,9 +203,9 @@ class DistanceMatrix(object):
 
         if paralell:
             with Pool() as p:
-                results = p.map(self.optimise, starts)
+                results = p.map(self.optimize, starts)
         else:
-            results = map(self.optimise, starts)
+            results = map(self.optimize, starts)
 
         results = sorted(results, key=lambda x: x.stress)
 
@@ -220,15 +221,16 @@ class Projection(object):
     Attributes:
         coords (pandas.DataFrame): Coordinates of the projection.
         stress (float): Residual error of multidimensional scaling. (If
-        generated using `self.from_optimize_result`).
+            generated using `self.from_optimize_result`).
     """
 
     def __init__(self, coords):
         self.coords = coords
 
     @classmethod
-    def from_optimize_result(self, OptimizeResult, n, m, index=None):
-        """
+    def from_optimize_result(cls, OptimizeResult, n, m, index=None):
+        """Construct a Projection from the output of an optimization.
+
         Args:
             OptimizeResult (`scipy.optimize.OptimizeResult`): Object returned
                 by `scipy.optimize.minimize`.
@@ -240,9 +242,9 @@ class Projection(object):
             (pymds.Projection)
         """
         coords = pd.DataFrame(OptimizeResult.x.reshape((m, n)), index=index)
-        proj = self(coords)
-        proj.stress = OptimizeResult.fun
-        return proj
+        projection = cls(coords)
+        projection.stress = OptimizeResult.fun
+        return projection
 
     def plot(self, **kwargs):
         """Plots the coordinates of the first two dimensions of the projection.
@@ -254,18 +256,20 @@ class Projection(object):
 
             .. doctest::
 
-               >>> import pandas as pd
-               >>> # Seaborn used for styles
-               >>> import seaborn as sns
-               >>> sns.set_style('whitegrid')
-               >>> from pymds.mds import DistanceMatrix
-               >>> dist = pd.DataFrame({
-               ...    'a': [0.0, 1.0, 2.0],
-               ...    'b': [1.0, 0.0, 3 ** 0.5],
-               ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
-               >>> dm = DistanceMatrix(dist)
-               >>> proj = dm.optimise()
-               >>> proj.plot()
+                >>> import pandas as pd
+                >>> import matplotlib
+                >>> # Seaborn used for styles
+                >>> import seaborn as sns
+                >>> sns.set_style('whitegrid')
+                >>> from pymds.mds import DistanceMatrix
+                >>> dist = pd.DataFrame({
+                ...    'a': [0.0, 1.0, 2.0],
+                ...    'b': [1.0, 0.0, 3 ** 0.5],
+                ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
+                >>> dm = DistanceMatrix(dist)
+                >>> pro = dm.optimize()
+                >>> isinstance(pro.plot(), matplotlib.axes.Subplot)
+                True
 
         Args:
             kwargs (dict): Passed to `pd.DataFrame.plot.scatter`.
@@ -288,8 +292,8 @@ class Projection(object):
         """Orient this Projection to another dataset.
 
         Orient this projection using reflection, rotation and translation to
-            resemble another projection using procrustes superimposition.
-            Scaling is optionally allowed.
+            match another projection using procrustes superimposition. Scaling
+            is optional.
 
         Args:
             other (pymds.Projection or pandas.DataFrame or array-like): The
@@ -300,12 +304,35 @@ class Projection(object):
                 self.coords.
             index (list-like): If other is an instance of pandas.DataFrame or
                 pymds.Projection then orient this projection to other using
-                only samples in index.
+                only Samples in index.
             inplace (bool): Either update the coordinates of this projection
                 inplace, or return a new instance of pymds.Projection.
             scaling (bool): Allow scaling.
+
+        Examples:
+
+            .. doctest::
+
+                >>> import numpy as np
+                >>> import pandas as pd
+                >>> from pymds.mds import Projection
+                ...
+                >>> array = np.random.randn(10, 2)
+                >>> pro = Projection(pd.DataFrame(array))
+                ...
+                >>> # Flip left-right, rotate 90 deg and translate
+                >>> other = np.fliplr(array)  
+                >>> other = np.dot(other, np.array([[0, -1], [1, 0]]))
+                >>> other += np.array([10, -5])
+                ...
+                >>> oriented = pro.orient_to(other)
+                >>> (oriented.coords.values - other).sum() < 1e-6
+                True
+
+        Returns:
+            (pymds.Projection): If not inplace.
         """
-        is_projection = type(other) is pymds.Projection
+        is_projection = type(other) is Projection
         is_df = type(other) is pd.DataFrame
 
         if is_projection or is_df:
@@ -337,9 +364,9 @@ class Projection(object):
 
             else:
             
-                uniq_idx = set(df_other.index) & set(self.coord.index)
+                uniq_idx = set(df_other.index) & set(self.coords.index)
 
-                if not len(shared):
+                if not len(uniq_idx):
                     raise ValueError(
                         "No samples shared between other and this projection")
 
@@ -383,4 +410,4 @@ class Projection(object):
         if inplace:
             self.coords = oriented
         else:
-            return self(oriented)
+            return Projection(oriented)

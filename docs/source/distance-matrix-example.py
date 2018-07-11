@@ -12,4 +12,4 @@ dist = pd.DataFrame({
 dm = DistanceMatrix(dist)
 
 # Embed vertices in two dimensions
-projection = dm.optimise(n=2)
+projection = dm.optimize(n=2)
