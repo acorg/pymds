@@ -77,6 +77,7 @@ class TestDistanceMatrixError(unittest.TestCase):
         m = self.dm.D.shape[0]
         self.assertEqual(0.5 * 4 * m ** 2, self.dm._error(diff))
 
+
 class TestDistanceMatrixOptimize(unittest.TestCase):
     """Tests for pymds.mds.DistanceMatrix.optimize"""
 
@@ -86,6 +87,7 @@ class TestDistanceMatrixOptimize(unittest.TestCase):
         dm = DistanceMatrix(dist)
         projection = dm.optimize()
         self.assertAlmostEqual(0, projection.stress)
+
 
 class TestProjectionOrientTo(unittest.TestCase):
     """Tests for pymds.mds.Projection.orient_to"""
@@ -153,7 +155,6 @@ class TestProjectionOrientTo(unittest.TestCase):
         b = Projection(pd.DataFrame(randn(10, 2)))
         oriented = a.orient_to(b, index=range(4))
         self.assertEqual(10, len(oriented.coords.index))
-
 
 
 if __name__ == '__main__':

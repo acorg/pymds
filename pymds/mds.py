@@ -321,7 +321,7 @@ class Projection(object):
                 >>> pro = Projection(pd.DataFrame(array))
                 ...
                 >>> # Flip left-right, rotate 90 deg and translate
-                >>> other = np.fliplr(array)  
+                >>> other = np.fliplr(array)
                 >>> other = np.dot(other, np.array([[0, -1], [1, 0]]))
                 >>> other += np.array([10, -5])
                 ...
@@ -363,13 +363,12 @@ class Projection(object):
                         "index contains elements not in self.coords.index")
 
             else:
-            
+
                 uniq_idx = set(df_other.index) & set(self.coords.index)
 
                 if not len(uniq_idx):
                     raise ValueError(
                         "No samples shared between other and this projection")
-
 
             idx = list(uniq_idx)
             arr_self = self.coords.loc[idx, :]
