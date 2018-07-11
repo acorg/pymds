@@ -6,6 +6,7 @@ from pathos.multiprocessing import ProcessingPool as Pool
 
 from scipy.optimize import minimize
 from scipy.spatial.distance import pdist, squareform
+from scipy.linalg import orthogonal_procrustes
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
@@ -140,7 +141,7 @@ class DistanceMatrix(object):
 
 
         Returns:
-            (Projection) The multidimensional scaling result.
+            (pymds.Projection) The multidimensional scaling result.
         """
         self.n = n
 
@@ -154,7 +155,8 @@ class DistanceMatrix(object):
 
         index = self.index if hasattr(self, "index") else None
 
-        return Projection(optim, n=self.n, m=self.m, index=index)
+        return Projection.from_optimize_result(
+            OptimizeResult=optim, n=self.n, m=self.m, index=index)
 
     def optimise_batch(self, batchsize=10, returns='best', paralell=True):
         """
@@ -213,21 +215,34 @@ class Projection(object):
     """Samples embeded in n-dimensional space.
 
     Args:
-        OptimizeResult (scipy.optimize.OptimizeResult): Object returned by
-            `scipy.optimize.minimize`.
-        n (int): Number of dimensions.
-        m (int): Number of samples.
-        index (list-like): Names of samples. (Optional).
+        coords (pandas.DataFrame): Coordinates of the projection.
 
     Attributes:
-        coords (pd.DataFrame): Coordinates of the projection.
-        stress (float): Residual error of multidimensional scaling.
+        coords (pandas.DataFrame): Coordinates of the projection.
+        stress (float): Residual error of multidimensional scaling. (If
+        generated using `self.from_optimize_result`).
     """
 
-    def __init__(self, OptimizeResult, n, m, index=None):
-        self.coords = pd.DataFrame(
-            OptimizeResult.x.reshape((m, n)), index=index)
-        self.stress = OptimizeResult.fun
+    def __init__(self, coords):
+        self.coords = coords
+
+    @classmethod
+    def from_optimize_result(self, OptimizeResult, n, m, index=None):
+        """
+        Args:
+            OptimizeResult (`scipy.optimize.OptimizeResult`): Object returned
+                by `scipy.optimize.minimize`.
+            n (int): Number of dimensions.
+            m (int): Number of samples.
+            index (list-like): Names of samples. (Optional).
+
+        Returns:
+            (pymds.Projection)
+        """
+        coords = pd.DataFrame(OptimizeResult.x.reshape((m, n)), index=index)
+        proj = self(coords)
+        proj.stress = OptimizeResult.fun
+        return proj
 
     def plot(self, **kwargs):
         """Plots the coordinates of the first two dimensions of the projection.
@@ -268,3 +283,104 @@ class Projection(object):
         ax.set_ylabel('')
         ax.set_aspect(1)
         return ax
+
+    def orient_to(self, other, index=None, inplace=False, scaling=False):
+        """Orient this Projection to another dataset.
+
+        Orient this projection using reflection, rotation and translation to
+            resemble another projection using procrustes superimposition.
+            Scaling is optionally allowed.
+
+        Args:
+            other (pymds.Projection or pandas.DataFrame or array-like): The
+                other dataset to orient this projection to. If other is an
+                instance of pymds.Projection or pandas.DataFrame, then other
+                must have indexes in common with this projection. If
+                array-like, then other must have the same dimensions as
+                self.coords.
+            index (list-like): If other is an instance of pandas.DataFrame or
+                pymds.Projection then orient this projection to other using
+                only samples in index.
+            inplace (bool): Either update the coordinates of this projection
+                inplace, or return a new instance of pymds.Projection.
+            scaling (bool): Allow scaling.
+        """
+        is_projection = type(other) is pymds.Projection
+        is_df = type(other) is pd.DataFrame
+
+        if is_projection or is_df:
+            df_other = other.coords if is_projection else other
+
+            if index:
+                # Check all indexes have no repeats
+                uniq_idx = set(index)
+                if len(uniq_idx) != len(index):
+                    raise ValueError("index has repeat elements")
+
+                uniq_other_idx = set(df_other.index)
+                if len(uniq_other_idx) != len(df_other.index):
+                    raise ValueError("other index has repeat elements")
+
+                uniq_self_idx = set(self.coords.index)
+                if len(uniq_self_idx) != len(self.coords.index):
+                    raise ValueError("self.coords.index has repeat elements")
+
+                # Check all elements in index are in df_other.index and
+                # self.coords.index
+                if uniq_idx - uniq_other_idx:
+                    raise ValueError(
+                        "index contains elements not in other index")
+
+                if uniq_idx - uniq_self_idx:
+                    raise ValueError(
+                        "index contains elements not in self.coords.index")
+
+            else:
+            
+                uniq_idx = set(df_other.index) & set(self.coord.index)
+
+                if not len(shared):
+                    raise ValueError(
+                        "No samples shared between other and this projection")
+
+
+            idx = list(uniq_idx)
+            arr_self = self.coords.loc[idx, :]
+            arr_other = df_other.loc[idx, :]
+
+        else:
+            if not hasattr(other, "ndim"):
+                raise TypeError(
+                    "other not array-like, or pandas.DataFrame, or "
+                    "pymds.Projection")
+
+            if other.shape != self.coords.shape:
+                raise ValueError(
+                    "array-like must have the same shape as self.coords")
+
+            else:
+                arr_self = self.coords.values
+                arr_other = other
+
+        if scaling:
+            raise NotImplementedError()
+
+        else:
+            self_mean = arr_self.mean()
+            other_mean = arr_other.mean()
+
+            A = arr_self - self_mean
+            B = arr_other - other_mean
+            R, scale = orthogonal_procrustes(A, B)
+
+            to_rotate = self.coords - self.coords.mean()
+            rotated = pd.DataFrame(
+                np.dot(to_rotate, R),
+                index=self.coords.index)
+
+            oriented = rotated + other_mean
+
+        if inplace:
+            self.coords = oriented
+        else:
+            return self(oriented)

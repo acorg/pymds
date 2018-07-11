@@ -76,6 +76,16 @@ class TestDistanceMatrixError(unittest.TestCase):
         m = self.dm.D.shape[0]
         self.assertEqual(0.5 * 4 * m ** 2, self.dm._error(diff))
 
+class TestDistanceMatrixOptimise(unittest.TestCase):
+    """Tests for pymds.mds.DistanceMatrix.optimise"""
+
+    def test_triangle(self):
+        """Three samples, each at 1 unit from each other. Expect 0 stress."""
+        dist = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0]])
+        dm = DistanceMatrix(dist)
+        projection = dm.optimise()
+        self.assertAlmostEqual(0, projection.stress)
+
 
 if __name__ == '__main__':
     unittest.main()
