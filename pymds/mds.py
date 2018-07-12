@@ -10,6 +10,7 @@ from scipy.linalg import orthogonal_procrustes
 
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
+from matplotlib.collections import LineCollection
 
 
 class DistanceMatrix(object):
@@ -225,7 +226,7 @@ class Projection(object):
     """
 
     def __init__(self, coords):
-        self.coords = coords
+        self.coords = pd.DataFrame(coords)
 
     @classmethod
     def from_optimize_result(cls, OptimizeResult, n, m, index=None):
@@ -254,25 +255,23 @@ class Projection(object):
 
         Examples:
 
-            .. doctest::
-
                 >>> import pandas as pd
-                >>> import matplotlib
+                >>> from pymds.mds import DistanceMatrix
+                ...
                 >>> # Seaborn used for styles
                 >>> import seaborn as sns
                 >>> sns.set_style('whitegrid')
-                >>> from pymds.mds import DistanceMatrix
+                ...
                 >>> dist = pd.DataFrame({
                 ...    'a': [0.0, 1.0, 2.0],
                 ...    'b': [1.0, 0.0, 3 ** 0.5],
                 ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
                 >>> dm = DistanceMatrix(dist)
                 >>> pro = dm.optimize()
-                >>> isinstance(pro.plot(), matplotlib.axes.Subplot)
-                True
+                >>> pro.plot()
 
         Args:
-            kwargs (dict): Passed to `pd.DataFrame.plot.scatter`.
+            kwargs: Passed to `pd.DataFrame.plot.scatter`.
 
         Returns:
             (matplotlib.axes.Subplot)
@@ -287,6 +286,91 @@ class Projection(object):
         ax.set_ylabel('')
         ax.set_aspect(1)
         return ax
+
+    def plot_lines_to(self, other, index=None, **kwargs):
+        """Plot lines from samples shared between this projection and another
+        dataset.
+
+        Args:
+            other (`pymds.Projection` or `pandas.DataFrame` or `array-like`):
+                The other dataset to plot lines to. If other is an
+                instance of `pymds.Projection` or `pandas.DataFrame`, then
+                other must have indexes in common with this projection. If
+                `array-like`, then other must have the same dimensions as
+                `self.coords`.
+            index (`list-like` or `None`): Only draw lines between samples in
+                index. All elements in index must be samples in this projection
+                and other.
+            kwargs: Passed to `matplotlib.collections.LineCollection`. Useful
+                keywords include `linewidths`, `colors` and `zorder`.
+
+        Examples:
+
+                >>> import numpy as np
+                >>> from pymds.mds import Projection
+                ...
+                >>> pro = Projection(np.random.randn(50, 2))
+                ... 
+                >>> # Rotate projection 90 deg
+                >>> R = np.array([[0, -1], [1, 0]])
+                >>> other = np.dot(pro.coords, R)
+                ... 
+                >>> projection.plot(c='black', edgecolor='white', zorder=20)
+                >>> projection.plot_lines_to(
+                ...     other, linewidths=0.3, colors='darkgrey')
+
+
+        Returns:
+            (matplotlib.axes.Subplot)
+        """
+        is_projection = type(other) is Projection
+        is_df = type(other) is pd.DataFrame
+
+        if is_projection or is_df:
+            df_other = other.coords if is_projection else other
+
+            if index is not None:
+
+                uniq_idx = set(index)
+
+                if uniq_idx - set(df_other.index):
+                    raise ValueError(
+                        "Samples in index are not in other")
+
+                if uniq_idx - set(self.coords.index):
+                    raise ValueError(
+                        "Samples in index are not in this projection")
+
+            else:
+                uniq_idx = set(df_other.index) & set(self.coords.index)
+
+                if not uniq_idx:
+                    raise ValueError(
+                        "This projection shares no samples with other")
+
+            idx = list(uniq_idx)
+            start = self.coords.loc[idx, :].values
+            end = df_other.loc[idx, :].values
+
+        else:
+            if not hasattr(other, "ndim"):
+                raise TypeError(
+                    "other not array-like, or pandas.DataFrame, or "
+                    "pymds.Projection")
+
+            if other.shape != self.coords.shape:
+                raise ValueError(
+                    "array-like must have the same shape as self.coords")
+
+            start = self.coords.values
+            end = other
+
+        segments = [[start[i, :], end[i, :]] for i in range(start.shape[0])]
+
+        ax = plt.gca()
+        ax.add_artist(LineCollection(segments=segments, **kwargs))
+        return ax
+
 
     def orient_to(self, other, index=None, inplace=False, scaling=False):
         """Orient this Projection to another dataset.
