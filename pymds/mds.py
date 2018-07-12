@@ -17,10 +17,10 @@ class DistanceMatrix(object):
     """A distance matrix.
 
     Args:
-        path_or_array_like (str or array-like): If str, path to csv
-            containing distance matrix. If array-like, the distance matrix.
+        path_or_array_like (`str` or `array-like`): If `str`, path to csv
+            containing distance matrix. If `array-like`, the distance matrix.
             Must be square.
-        na_values (str): How nan is represented in csv file.
+        na_values (`str`): How nan is represented in csv file.
 
     Notes:
         Negative distances are converted to 0.
@@ -52,14 +52,14 @@ class DistanceMatrix(object):
         """Half the sum of the squared difference.
 
         Args:
-            diff (array-like): [m, m] matrix.
+            diff (`array-like`): [`m`, `m`] matrix.
 
         Returns:
-            (float)
+            Error (`float`)
 
         Notes:
             The return value is divided by two because distances between each
-            pair of samples are represented twice in a full [m, m] matrix.
+            pair of samples are represented twice in a full [`m`, `m`] matrix.
         """
         return np.nansum(np.power(diff, 2)) / 2
 
@@ -67,12 +67,12 @@ class DistanceMatrix(object):
         """Compute the gradient.
 
         Args:
-            diff (array-like): [m, m] matrix. D - d
-            d (array-like): [m, m] matrix.
-            coords (array-like): [m, n] matrix.
+            diff (`array-like`): [`m`, `m`] matrix. `D` - `d`
+            d (`array-like`): [`m`, `m`] matrix.
+            coords (`array-like`): [`m`, `n`] matrix.
 
         Returns:
-            (np.array) [m, n]
+            Gradient (`np.array`) [`m`, `n`]
         """
         denom = np.copy(d)
         denom[denom == 0] = 1e-5
@@ -99,13 +99,13 @@ class DistanceMatrix(object):
         This is the function optimized by :obj:`scipy.optimize.minimize`.
 
         Args:
-            x (array-like): [m * n, ] matrix.
+            x (`array-like`): [`m` * `n`, ] matrix.
 
         Returns:
-            (tuple) containing
+            Error and gradient (`tuple`) containing
 
-                - (float)
-                - (np.array)
+                - Error (`float`)
+                - Gradient (`np.array`) [`m`, `n`]
         """
         coords = x.reshape((self.m, self.n))
         d = squareform(pdist(coords))
@@ -118,10 +118,10 @@ class DistanceMatrix(object):
         """Run multidimensional scaling on this distance matrix.
 
         Args:
-            start (None or array-like): Starting coordinates. If None, random
-                starting coordinates are used. If array-like must have shape
-                [m * n, ].
-            n (int): Number of dimensions to embed samples in.
+            start (`None` or `array-like`): Starting coordinates. If
+                `start=None`, random starting coordinates are used. If
+                `array-like` must have shape [`m` * `n`, ].
+            n (`int`): Number of dimensions to embed samples in.
 
         Examples:
 
@@ -142,7 +142,7 @@ class DistanceMatrix(object):
 
 
         Returns:
-            (pymds.Projection) The multidimensional scaling result.
+            Projection (`pymds.mds.Projection`)
         """
         self.n = n
 
@@ -165,12 +165,12 @@ class DistanceMatrix(object):
         Run multiple optimisations using different starting coordinates.
 
         Args:
-            m (int): Number of dimensions to embed samples in.
-            batchsize (int): Number of optimisations to run.
-            returns (str): If 'all', return results of all optimisations. These
-                are ordered by stress, ascending. If 'best' return only one
-                Projection with the lowest stress.
-            parallel (bool): Run optimisations in parallel or not.
+            m (`int`): Number of dimensions to embed samples in.
+            batchsize (`int`): Number of optimisations to run.
+            returns (`str`): If 'all', return results of all optimisations,
+                ordered by stress, ascending. If 'best' return the projection
+                with the lowest stress.
+            parallel (`bool`): If `True`, run optimisations in parallel.
 
         Examples:
 
@@ -190,12 +190,12 @@ class DistanceMatrix(object):
                <class 'pymds.mds.Projection'>
 
         Returns:
-            (list) of length batchsize. Contains instances of (Projection).
-                Sorted by stress, ascending.
+            Projections (`list`) Length batchsize, containing instances of
+                (`pymds.mds.Projection`). Sorted by stress, ascending.
 
             or
 
-            (Projection) with the lowest stress.
+            Projection (`pymds.mds.Projection`) with the lowest stress.
         """
         if returns not in ('best', 'all'):
             raise ValueError('returns must be either "best" or "all"')
@@ -214,14 +214,14 @@ class DistanceMatrix(object):
 
 
 class Projection(object):
-    """Samples embeded in n-dimensional space.
+    """Samples embedded in n-dimensional space.
 
     Args:
-        coords (pandas.DataFrame): Coordinates of the projection.
+        coords (`pandas.DataFrame`): Coordinates of the projection.
 
     Attributes:
-        coords (pandas.DataFrame): Coordinates of the projection.
-        stress (float): Residual error of multidimensional scaling. (If
+        coords (`pandas.DataFrame`): Coordinates of the projection.
+        stress (`float`): Residual error of multidimensional scaling. (If
             generated using `self.from_optimize_result`).
     """
 
@@ -235,12 +235,12 @@ class Projection(object):
         Args:
             OptimizeResult (`scipy.optimize.OptimizeResult`): Object returned
                 by `scipy.optimize.minimize`.
-            n (int): Number of dimensions.
-            m (int): Number of samples.
-            index (list-like): Names of samples. (Optional).
+            n (`int`): Number of dimensions.
+            m (`int`): Number of samples.
+            index (`list-like`): Names of samples. (Optional).
 
         Returns:
-            (pymds.Projection)
+            Projection (`pymds.mds.Projection`)
         """
         coords = pd.DataFrame(OptimizeResult.x.reshape((m, n)), index=index)
         projection = cls(coords)
@@ -248,33 +248,31 @@ class Projection(object):
         return projection
 
     def plot(self, **kwargs):
-        """Plots the coordinates of the first two dimensions of the projection.
+        """Plot the coordinates of the first two dimensions of the projection.
 
-        Removes all axis and tick labels, and sets the grid spacing at 1 unit.
-        One way to display the grid, using seaborn, is:
+        Removes axis and tick labels, and sets the grid spacing to 1 unit.
+        One way to display the grid is to use Seaborn:
 
         Examples:
 
-                >>> import pandas as pd
-                >>> from pymds.mds import DistanceMatrix
-                ...
-                >>> # Seaborn used for styles
-                >>> import seaborn as sns
-                >>> sns.set_style('whitegrid')
-                ...
-                >>> dist = pd.DataFrame({
-                ...    'a': [0.0, 1.0, 2.0],
-                ...    'b': [1.0, 0.0, 3 ** 0.5],
-                ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
-                >>> dm = DistanceMatrix(dist)
-                >>> pro = dm.optimize()
-                >>> pro.plot()
+            >>> from pymds.mds import DistanceMatrix
+            >>> import pandas as pd
+            >>> import seaborn as sns
+            >>> sns.set_style('whitegrid')
+            ...
+            >>> dist = pd.DataFrame({
+            ...    'a': [0.0, 1.0, 2.0],
+            ...    'b': [1.0, 0.0, 3 ** 0.5],
+            ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
+            >>> dm = DistanceMatrix(dist)
+            >>> pro = dm.optimize()
+            >>> pro.plot()
 
         Args:
-            kwargs: Passed to `pd.DataFrame.plot.scatter`.
+            **kwargs: Passed to `pandas.DataFrame.plot.scatter`.
 
         Returns:
-            (matplotlib.axes.Subplot)
+            Ax (`matplotlib.axes.Subplot`)
         """
         ax = plt.gca()
         self.coords.plot.scatter(x=0, y=1, ax=ax, **kwargs)
@@ -292,36 +290,34 @@ class Projection(object):
         dataset.
 
         Args:
-            other (`pymds.Projection` or `pandas.DataFrame` or `array-like`):
-                The other dataset to plot lines to. If other is an
-                instance of `pymds.Projection` or `pandas.DataFrame`, then
-                other must have indexes in common with this projection. If
-                `array-like`, then other must have the same dimensions as
-                `self.coords`.
+            other
+                (`pymds.mds.Projection` or `pandas.DataFrame` or `array-like`):
+                The other dataset to plot lines to. If other is an instance of
+                `pymds.mds.Projection` or `pandas.DataFrame`, then other must
+                have indexes in common with this projection. If `array-like`,
+                then other must have the same dimensions as `self.coords`.
             index (`list-like` or `None`): Only draw lines between samples in
                 index. All elements in index must be samples in this projection
                 and other.
-            kwargs: Passed to `matplotlib.collections.LineCollection`. Useful
-                keywords include `linewidths`, `colors` and `zorder`.
+            **kwargs: Passed to `matplotlib.collections.LineCollection`. Useful
+                keyword arguments include `linewidths`, `colors` and `zorder`.
 
         Examples:
 
-                >>> import numpy as np
-                >>> from pymds.mds import Projection
-                ...
-                >>> pro = Projection(np.random.randn(50, 2))
-                ... 
-                >>> # Rotate projection 90 deg
-                >>> R = np.array([[0, -1], [1, 0]])
-                >>> other = np.dot(pro.coords, R)
-                ... 
-                >>> projection.plot(c='black', edgecolor='white', zorder=20)
-                >>> projection.plot_lines_to(
-                ...     other, linewidths=0.3, colors='darkgrey')
-
+            >>> import numpy as np
+            >>> from pymds.mds import Projection
+            ...
+            >>> pro = Projection(np.random.randn(50, 2))
+            ...
+            >>> # Rotate projection 90 deg
+            >>> R = np.array([[0, -1], [1, 0]])
+            >>> other = np.dot(pro.coords, R)
+            ...
+            >>> projection.plot(c='black', edgecolor='white', zorder=20)
+            >>> projection.plot_lines_to(other, linewidths=0.3)
 
         Returns:
-            (matplotlib.axes.Subplot)
+            Ax (`matplotlib.axes.Subplot`)
         """
         is_projection = type(other) is Projection
         is_df = type(other) is pd.DataFrame
@@ -356,7 +352,7 @@ class Projection(object):
             if not hasattr(other, "ndim"):
                 raise TypeError(
                     "other not array-like, or pandas.DataFrame, or "
-                    "pymds.Projection")
+                    "pymds.mds.Projection")
 
             if other.shape != self.coords.shape:
                 raise ValueError(
@@ -371,7 +367,6 @@ class Projection(object):
         ax.add_artist(LineCollection(segments=segments, **kwargs))
         return ax
 
-
     def orient_to(self, other, index=None, inplace=False, scaling=False):
         """Orient this Projection to another dataset.
 
@@ -380,18 +375,19 @@ class Projection(object):
         optional.
 
         Args:
-            other (pymds.Projection or pandas.DataFrame or array-like): The
-                other dataset to orient this projection to. If other is an
-                instance of pymds.Projection or pandas.DataFrame, then other
-                must have indexes in common with this projection. If
-                array-like, then other must have the same dimensions as
-                self.coords.
-            index (list-like or None): If other is an instance of
-                pandas.DataFrame or pymds.Projection then orient this
+            other
+                (`pymds.mds.Projection` or `pandas.DataFrame` or `array-like`):
+                The other dataset to orient this projection to.
+                If other is an instance of pymds.mds.Projection or
+                pandas.DataFrame, then other must have indexes in common with
+                this projection. If `array-like`, then other must have the
+                same dimensions as self.coords.
+            index (`list-like` or `None`): If other is an instance of
+                `pandas.DataFrame` or `pymds.mds.Projection` then orient this
                 projection to other using only samples in index.
-            inplace (bool): Either update the coordinates of this projection
-                inplace, or return a new instance of pymds.Projection.
-            scaling (bool): Allow scaling. (Not implemented yet).
+            inplace (`bool`): Either update the coordinates of this projection
+                inplace, or return a new instance of pymds.mds.Projection.
+            scaling (`bool`): Allow scaling. (Not implemented yet).
 
         Examples:
 
@@ -414,7 +410,7 @@ class Projection(object):
                 True
 
         Returns:
-            (pymds.Projection): If not inplace.
+            Projection (`pymds.mds.Projection`) if `inplace=False`.
         """
         is_projection = type(other) is Projection
         is_df = type(other) is pd.DataFrame
@@ -462,7 +458,7 @@ class Projection(object):
             if not hasattr(other, "ndim"):
                 raise TypeError(
                     "other not array-like, or pandas.DataFrame, or "
-                    "pymds.Projection")
+                    "pymds.mds.Projection")
 
             if other.shape != self.coords.shape:
                 raise ValueError(
