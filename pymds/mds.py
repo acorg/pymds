@@ -277,8 +277,8 @@ class Projection(object):
         Returns:
             (matplotlib.axes.Subplot)
         """
-        self.coords.plot.scatter(x=0, y=1, **kwargs)
         ax = plt.gca()
+        self.coords.plot.scatter(x=0, y=1, ax=ax, **kwargs)
         ax.get_xaxis().set_major_locator(MultipleLocator(base=1.0))
         ax.get_yaxis().set_major_locator(MultipleLocator(base=1.0))
         ax.set_xticklabels([])
@@ -292,8 +292,8 @@ class Projection(object):
         """Orient this Projection to another dataset.
 
         Orient this projection using reflection, rotation and translation to
-            match another projection using procrustes superimposition. Scaling
-            is optional.
+        match another projection using procrustes superimposition. Scaling is
+        optional.
 
         Args:
             other (pymds.Projection or pandas.DataFrame or array-like): The
@@ -302,12 +302,12 @@ class Projection(object):
                 must have indexes in common with this projection. If
                 array-like, then other must have the same dimensions as
                 self.coords.
-            index (list-like): If other is an instance of pandas.DataFrame or
-                pymds.Projection then orient this projection to other using
-                only Samples in index.
+            index (list-like or None): If other is an instance of
+                pandas.DataFrame or pymds.Projection then orient this
+                projection to other using only samples in index.
             inplace (bool): Either update the coordinates of this projection
                 inplace, or return a new instance of pymds.Projection.
-            scaling (bool): Allow scaling.
+            scaling (bool): Allow scaling. (Not implemented yet).
 
         Examples:
 
