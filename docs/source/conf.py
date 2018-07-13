@@ -45,10 +45,16 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.doctest',
     'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx'
 ]
 todo_incude_todos = True
 napoleon_google_docstring = True
 napoleon_include_special_with_doc = True
+intersphinx_mapping = {
+    'pandas': ('http://pandas-docs.github.io/pandas-docs-travis/', None),
+    'matplotlib': ('http://matplotlib.org', None),
+    'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None)
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
