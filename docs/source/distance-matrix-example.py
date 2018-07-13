@@ -1,5 +1,5 @@
 import pandas as pd
-from pymds.mds import DistanceMatrix
+from pymds import DistanceMatrix
 
 # Distances between the vertices of a right-angled triangle
 dist = pd.DataFrame({

@@ -17,9 +17,9 @@ Use `pip`_::
 
     pip install pymds
 
-*******
-Example
-*******
+************
+Introduction
+************
 
 Multidimensional scaling aims to embed samples as points in `n`-dimensional space, where the distances between points represent distances between samples in data.
 
@@ -30,5 +30,17 @@ In this example, edges of a triangle are specified by setting the distances betw
 In datasets where the distances between samples cannot be represented perfectly in `n`-dimensional space residual error exists among the distances between samples in the space and the distances in the data.
 
 Error in MDS is also known as `stress`.
+
+***********
+pymds usage
+***********
+
+Demonstrates some simple pymds features.
+
+.. literalinclude:: orient-plot-example.py
+
+.. image:: orient-plot-example.png
+   :scale: 50 %
+   :align: center
 
 .. _pip: https://pypi.python.org/pypi/pip
