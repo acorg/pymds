@@ -5,7 +5,7 @@ import unittest
 
 import numpy as np
 from numpy.random import randn
-import pandas as pd
+from pandas import DataFrame
 from scipy.spatial.distance import pdist, squareform
 
 import pymds
@@ -36,7 +36,7 @@ class TestDistanceMatrixInit(unittest.TestCase):
 
     def test_D_ndarray_when_passed_df(self):
         """DistanceMatrix.D should always be a np.array."""
-        dist = pd.DataFrame(squareform(pdist(randn(3, 2))))
+        dist = DataFrame(squareform(pdist(randn(3, 2))))
         dm = DistanceMatrix(dist)
         self.assertIsInstance(dm.D, np.ndarray)
 
@@ -89,70 +89,86 @@ class TestDistanceMatrixOptimize(unittest.TestCase):
         self.assertAlmostEqual(0, projection.stress)
 
 
+class TestProjectionSharedWith(unittest.TestCase):
+    """Tests for pymds.mds.Projection._get_samples_shared_with()"""
+
+    def test_raises_error_if_no_shared_idx(self):
+        a = Projection(DataFrame(randn(10, 2), index=range(0, 10)))
+        b = Projection(DataFrame(randn(10, 2), index=range(10, 20)))
+        with self.assertRaises(ValueError):
+            a._get_samples_shared_with(b)
+
+    def test_raises_error_if_dupes_in_coord_index(self):
+        index = list(range(9)) + [4]
+        a = Projection(DataFrame(randn(10, 2), index=index))
+        b = Projection(DataFrame(randn(10, 2)))
+        with self.assertRaises(ValueError):
+            a._get_samples_shared_with(b)
+
+    def test_raises_error_if_dupes_in_other_index(self):
+        index = list(range(9)) + [4]
+        a = Projection(DataFrame(randn(10, 2)))
+        b = Projection(DataFrame(randn(10, 2), index=index))
+        with self.assertRaises(ValueError):
+            a._get_samples_shared_with(b)
+
+    def test_raises_error_if_dupes_in_index_arg(self):
+        a = Projection(DataFrame(randn(10, 2)))
+        b = Projection(DataFrame(randn(10, 2)))
+        with self.assertRaises(ValueError):
+            a._get_samples_shared_with(b, index=[1, 1])
+
+    def test_raises_error_if_elements_in_index_not_in_projection(self):
+        a = Projection(DataFrame(randn(10, 2)))
+        b = Projection(DataFrame(randn(10, 2), index=range(5, 15)))
+        with self.assertRaises(ValueError):
+            a._get_samples_shared_with(b, index=[14])
+
+    def test_raises_error_if_elements_in_index_not_in_other(self):
+        a = Projection(DataFrame(randn(10, 2)))
+        b = Projection(DataFrame(randn(10, 2), index=range(5, 15)))
+        with self.assertRaises(ValueError):
+            a._get_samples_shared_with(b, index=[4])
+
+    def test_raises_error_if_other_is_array_wrong_shape(self):
+        a = Projection(DataFrame(randn(10, 2)))
+        with self.assertRaises(ValueError):
+            a._get_samples_shared_with(randn(11, 2))
+
+
 class TestProjectionOrientTo(unittest.TestCase):
     """Tests for pymds.mds.Projection.orient_to"""
 
     def test_returns_projection(self):
-        a = Projection(pd.DataFrame(randn(10, 2)))
-        b = Projection(pd.DataFrame(randn(10, 2)))
+        a = Projection(DataFrame(randn(10, 2)))
+        b = Projection(DataFrame(randn(10, 2)))
         self.assertIsInstance(a.orient_to(b), Projection)
 
-    def test_raises_error_if_no_shared_idx(self):
-        a = Projection(pd.DataFrame(randn(10, 2), index=range(0, 10)))
-        b = Projection(pd.DataFrame(randn(10, 2), index=range(10, 20)))
-        with self.assertRaises(ValueError):
-            a.orient_to(b)
-
-    def test_raises_error_if_dupes_in_coord_index(self):
-        index = list(range(9)) + [4]
-        a = Projection(pd.DataFrame(randn(10, 2), index=index))
-        b = Projection(pd.DataFrame(randn(10, 2)))
-        with self.assertRaises(ValueError):
-            a.orient_to(b)
-
-    def test_raises_error_if_dupes_in_other_index(self):
-        index = list(range(9)) + [4]
-        a = Projection(pd.DataFrame(randn(10, 2)))
-        b = Projection(pd.DataFrame(randn(10, 2), index=index))
-        with self.assertRaises(ValueError):
-            a.orient_to(b)
-
-    def test_raises_error_if_dupes_in_index_arg(self):
-        a = Projection(pd.DataFrame(randn(10, 2)))
-        b = Projection(pd.DataFrame(randn(10, 2)))
-        with self.assertRaises(ValueError):
-            a.orient_to(b, index=[1, 1])
-
-    def test_raises_error_if_elements_in_index_not_in_projection(self):
-        a = Projection(pd.DataFrame(randn(10, 2)))
-        b = Projection(pd.DataFrame(randn(10, 2), index=range(5, 15)))
-        with self.assertRaises(ValueError):
-            a.orient_to(b, index=[14])
-
-    def test_raises_error_if_elements_in_index_not_in_other(self):
-        a = Projection(pd.DataFrame(randn(10, 2)))
-        b = Projection(pd.DataFrame(randn(10, 2), index=range(5, 15)))
-        with self.assertRaises(ValueError):
-            a.orient_to(b, index=[4])
-
-    def test_raises_error_if_other_is_array_wrong_shape(self):
-        a = Projection(pd.DataFrame(randn(10, 2)))
-        with self.assertRaises(ValueError):
-            a.orient_to(randn(11, 2))
-
-    def test_orients_correct(self):
+    def test_orients_correct_if_other_is_arr(self):
         arr = randn(10, 2)
         # Flip arr left-right, rotate 90 deg counter clockwise, and translate
         other = np.fliplr(arr)
         other = np.dot(other, np.array([[0, -1], [1, 0]]))
         other += np.array([10, -5])
 
-        oriented = Projection(pd.DataFrame(arr)).orient_to(other)
+        oriented = Projection(DataFrame(arr)).orient_to(other)
         self.assertAlmostEqual(0, (oriented.coords.values - other).sum())
 
+    def test_orients_correct_if_other_is_projection(self):
+        arr = randn(10, 2)
+        # Flip arr left-right, rotate 90 deg counter clockwise, and translate
+        other = np.fliplr(arr)
+        other = np.dot(other, np.array([[0, -1], [1, 0]]))
+        other += np.array([10, -5])
+        other = Projection(DataFrame(other))
+
+        oriented = Projection(DataFrame(arr)).orient_to(other)
+        diff = (oriented.coords.values - other.coords.values).sum()
+        self.assertAlmostEqual(0, diff)
+
     def test_orients_on_subset_returns_full_data(self):
-        a = Projection(pd.DataFrame(randn(10, 2)))
-        b = Projection(pd.DataFrame(randn(10, 2)))
+        a = Projection(DataFrame(randn(10, 2)))
+        b = Projection(DataFrame(randn(10, 2)))
         oriented = a.orient_to(b, index=range(4))
         self.assertEqual(10, len(oriented.coords.index))
 

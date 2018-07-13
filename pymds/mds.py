@@ -454,14 +454,14 @@ class Projection(object):
             raise NotImplementedError()
 
         else:
-            self_mean = arr_self.mean()
-            other_mean = arr_other.mean()
+            self_mean = arr_self.mean(axis=0)
+            other_mean = arr_other.mean(axis=0)
 
             A = arr_self - self_mean
             B = arr_other - other_mean
             R, _ = orthogonal_procrustes(A, B)
 
-            to_rotate = self.coords - self.coords.mean()
+            to_rotate = self.coords - self.coords.mean(axis=0)
             oriented = np.dot(to_rotate, R) + other_mean
             oriented = pd.DataFrame(oriented, index=self.coords.index)
 
