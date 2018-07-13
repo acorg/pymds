@@ -1,41 +1,45 @@
-#####
-pymds
-#####
+#########
+``pymds``
+#########
 
 Metric multidimensional scaling in python.
 
-.. toctree::
-   :maxdepth: 2
-
-   mds
-
-*******
-Install
-*******
+************
+Installation
+************
 
 Use `pip`_::
 
     pip install pymds
 
-************
-Introduction
-************
+*********
+Reference
+*********
+
+.. toctree::
+   :maxdepth: 3
+
+   mds
+
+**********
+Background
+**********
 
 Multidimensional scaling aims to embed samples as points in `n`-dimensional space, where the distances between points represent distances between samples in data.
 
-In this example, edges of a triangle are specified by setting the distances between three vertices `a`, `b` and `c`. These data can be represented perfectly in 2-dimensional space. 
+In this example, edges of a triangle are specified by setting the distances between three vertices `a`, `b` and `c`. These data can be represented perfectly in 2-dimensions. 
 
 .. literalinclude:: distance-matrix-example.py
 
-In datasets where the distances between samples cannot be represented perfectly in `n`-dimensional space residual error exists among the distances between samples in the space and the distances in the data.
+In data where distances between samples cannot be represented perfectly in the number of dimensions used, residual error will exist among the distances between samples in the space and the distances in the data.
 
 Error in MDS is also known as `stress`.
 
-***********
-pymds usage
-***********
+*****
+Usage
+*****
 
-Demonstrates some simple pymds features.
+The following example demonstrates some simple pymds features.
 
 .. literalinclude:: orient-plot-example.py
 

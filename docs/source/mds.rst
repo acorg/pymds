@@ -1,11 +1,11 @@
-Distance Matrix
-===============
+``pymds.DistanceMatrix``
+========================
 
 .. autoclass:: pymds.DistanceMatrix
    :members:
 
-Projection
-==========
+``pymds.Projection``
+====================
 
 .. autoclass:: pymds.Projection
    :members:
