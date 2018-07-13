@@ -1,6 +1,6 @@
 from __future__ import absolute_import as _
 from .mds import DistanceMatrix, Projection
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'
 
 __all__ = ['__version__', 'DistanceMatrix', 'Projection']
