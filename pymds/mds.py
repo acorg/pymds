@@ -24,6 +24,8 @@ from scipy.optimize import minimize
 from scipy.spatial.distance import pdist, squareform
 from scipy.linalg import orthogonal_procrustes
 
+from sklearn.decomposition import PCA
+
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 from matplotlib.collections import LineCollection
@@ -244,13 +246,14 @@ class Projection(object):
 
     def __init__(self, coords):
         self.coords = pd.DataFrame(coords)
+        self.n, self.m = self.coords.shape
 
     @classmethod
     def from_optimize_result(cls, result, n, m, index=None):
         """Construct a Projection from the output of an optimization.
 
         Args:
-            result (:py:class:`scipy.optimize.OptimizeResult`): Object 
+            result (:py:class:`scipy.optimize.OptimizeResult`): Object
                 returned by :py:func:`scipy.optimize.minimize`.
             n (`int`): Number of dimensions.
             m (`int`): Number of samples.
@@ -262,6 +265,8 @@ class Projection(object):
         coords = pd.DataFrame(result.x.reshape((m, n)), index=index)
         projection = cls(coords)
         projection.stress = result.fun
+        projection.n = n
+        projection.m = m
         return projection
 
     def _get_samples_shared_with(self, other, index=None):
@@ -469,3 +474,25 @@ class Projection(object):
             self.coords = oriented
         else:
             return Projection(oriented)
+
+    def pca_rotate(self, inplace=False):
+        """Rotate the Projection so that each dimension corresponds to a
+        principal component.
+
+        Args:
+            inplace (`bool`): Update coordinates of this projection inplace,
+                or return an instance of :py:class:`pymds.Projection`.
+
+        Returns:
+            :py:class:`pymds.Projection`: If ``inplace=False``.
+        """
+        data = PCA(n_components=self.m).fit(self.coords).transform(self.coords)
+        coords = pd.DataFrame(
+            data=data,
+            index=self.coords.index,
+            columns=self.coords.columns)
+
+        if inplace:
+            self.coords = coords
+        else:
+            return Projection(coords)
