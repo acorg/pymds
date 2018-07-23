@@ -11,6 +11,13 @@ It can be installed from command-line using
 pip install pymds
 ```
 
+### Development branch
+
+```bash
+git clone --single-branch -b dev git@github.com:acorg/pymds.git
+pip install -e ./pymds
+```
+
 ## Documentation
 
 Check out [pymds.readthedocs.io](https://pymds.readthedocs.io).
