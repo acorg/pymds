@@ -16,8 +16,8 @@ dists = squareform(pdist(samples))
 dists_shrunk = dists * 0.65
 
 # Embed
-original = DistanceMatrix(dists).optimize()
-shrunk = DistanceMatrix(dists_shrunk).optimize()
+original = DistanceMatrix(dists).embed()
+shrunk = DistanceMatrix(dists_shrunk).embed()
 
 shrunk.orient_to(original, inplace=True)
 

@@ -132,7 +132,7 @@ class DistanceMatrix(object):
         gradient = self._gradient(diff, d, coords)
         return error, gradient.ravel()
 
-    def optimize(self, start=None, n=2):
+    def embed(self, start=None, n=2):
         """Run multidimensional scaling on this distance matrix.
 
         Args:
@@ -152,7 +152,7 @@ class DistanceMatrix(object):
                ...    'b': [1.0, 0.0, 3 ** 0.5],
                ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
                >>> dm = DistanceMatrix(dist)
-               >>> pro = dm.optimize(n=2)
+               >>> pro = dm.embed(n=2)
                >>> pro.coords.shape
                (3, 2)
                >>> type(pro)
@@ -177,7 +177,7 @@ class DistanceMatrix(object):
         return Projection.from_optimize_result(
             result=optim, n=self.n, m=self.m, index=index)
 
-    def optimize_batch(self, batchsize=10, returns='best', paralell=True):
+    def embed_batch(self, batchsize=10, returns='best', paralell=True):
         """
         Run multiple optimizations using different starting coordinates.
 
@@ -199,7 +199,7 @@ class DistanceMatrix(object):
                ...    'b': [1.0, 0.0, 3 ** 0.5],
                ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
                >>> dm = DistanceMatrix(dist)
-               >>> batch = dm.optimize_batch(batchsize=3, returns='all')
+               >>> batch = dm.embed_batch(batchsize=3, returns='all')
                >>> len(batch)
                3
                >>> type(batch[0])
@@ -223,9 +223,9 @@ class DistanceMatrix(object):
 
         if paralell:
             with Pool() as p:
-                results = p.map(self.optimize, starts)
+                results = p.map(self.embed, starts)
         else:
-            results = map(self.optimize, starts)
+            results = map(self.embed, starts)
 
         results = sorted(results, key=lambda x: x.stress)
 
@@ -352,7 +352,7 @@ class Projection(object):
             ...    'b': [1.0, 0.0, 3 ** 0.5],
             ...    'c': [2.0, 3 ** 0.5, 0.0]} , index=['a', 'b', 'c'])
             >>> dm = DistanceMatrix(dist)
-            >>> pro = dm.optimize()
+            >>> pro = dm.embed()
             >>> ax = pro.plot(c='black', s=50, edgecolor='white')
 
         Returns:
